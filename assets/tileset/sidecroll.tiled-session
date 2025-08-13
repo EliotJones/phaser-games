@@ -1,0 +1,50 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "terrain.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "terrain.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 407,
+                "y": 432
+            }
+        },
+        "terrain.tmx#terrain": {
+            "scaleInDock": 1
+        },
+        "terrain.tsx": {
+            "scaleInDock": 2,
+            "scaleInEditor": 4
+        }
+    },
+    "last.exportedFilePath": "D:/git/javascript/side-scroll-platformer/assets/tileset",
+    "last.imagePath": "D:/git/javascript/side-scroll-platformer/assets/tileset",
+    "map.height": 50,
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 50,
+    "openFiles": [
+        "terrain.tmx",
+        "terrain.tsx"
+    ],
+    "project": "sidecroll.tiled-project",
+    "property.type": "string",
+    "recentFiles": [
+        "terrain.tsx",
+        "terrain.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
