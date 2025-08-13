@@ -12,17 +12,10 @@ Jump potions are available in the Goals layer.
 
 ## To-dos
 
-- Collect fruits
-- Show score
-- Double jump timer decay and prevent double jump if you hit your head
 - Freeze and show restart on water/lava
 - Add enemies
 - Add jumping on enemies kills them
-- Fix display scaling issues
 - Add edge of map effects
-- Music and SFX
-- Add potion effect and prevent misuse (left jump only)
-- Add potion for final jump
 - Add game completed
 - Add timer and score UX
 - Add sky
