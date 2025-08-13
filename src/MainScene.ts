@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { SoundManager } from "./SoundManager";
+import { SCALE } from "./consts";
 
 export class MainScene extends Phaser.Scene {
     player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
@@ -88,7 +89,8 @@ export class MainScene extends Phaser.Scene {
             .setOffset(3, 8)
             .setMaxVelocity(100, 250)
             .setDragX(750)
-            .setGravityY(102);
+            .setGravityY(102)
+            .setCollideWorldBounds(true);
 
         if (!this.anims.exists('left')) {
             this.anims.create({
@@ -122,8 +124,9 @@ export class MainScene extends Phaser.Scene {
             this.overlapGoalTile(tile as Phaser.Tilemaps.Tile);
         }, undefined, this);
 
-        camera.startFollow(this.player)
-        this.player.setCollideWorldBounds(true)
+        // Pass round pixels true to stop tile seams.
+        camera.startFollow(this.player, true, 0.1, 0.1);
+        camera.setZoom(SCALE);
 
         this.fKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.F);
     }

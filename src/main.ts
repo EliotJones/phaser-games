@@ -1,10 +1,11 @@
+import { NATIVE_HEIGHT, NATIVE_WIDTH, SCALE } from "./consts";
 import { MainScene } from "./MainScene";
 import { UIScene } from "./UIScene";
 
 const game = new Phaser.Game({
     type: Phaser.AUTO,
-    width: 700,
-    height: 500,
+    width: NATIVE_WIDTH,
+    height: NATIVE_HEIGHT,
     parent: 'phaser',
     scene: [MainScene, UIScene],
     physics: {
@@ -18,8 +19,10 @@ const game = new Phaser.Game({
         }
     },
     scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        mode: Phaser.Scale.NONE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: NATIVE_WIDTH * SCALE,  // actual canvas size to avoid subpixel tile seams
+        height: NATIVE_HEIGHT * SCALE
     },
     render: {
         pixelArt: true,
