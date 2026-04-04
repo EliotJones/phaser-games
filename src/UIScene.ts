@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-
+import { AssetKeys } from "./consts";
 
 export class UIScene extends Phaser.Scene {
     barContainer: Phaser.GameObjects.Container;
@@ -14,23 +14,16 @@ export class UIScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.spritesheet('spritesheet', 'assets/tileset/four-seasons-tileset.png',
-            {
-                frameWidth: 16,
-                frameHeight: 16
-            }
-        );
-        this.load.image('scorebar', 'assets/ui/scorebar.png');
     }
 
     create() {
         this.barContainer = this.add.container(0, 0);
-        const img = this.add.image(5, 5, 'scorebar').setOrigin(0, 0)
+        const img = this.add.image(5, 5, AssetKeys.scorebar).setOrigin(0, 0)
             .setScale(1, 0.8);
         this.barContainer.add(img);
 
 
-        const fruit = this.add.image(5 + 12, 5 + 4, 'spritesheet', 127)
+        const fruit = this.add.image(5 + 12, 5 + 4, AssetKeys.tilesImage, 127)
             .setOrigin(0, 0);
 
         this.barContainer.add(fruit);
@@ -44,7 +37,7 @@ export class UIScene extends Phaser.Scene {
 
         this.barContainer.add(this.scoreText);
 
-        const potion = this.add.image(5 + 12 + 45, 5 + 4, 'spritesheet', 94)
+        const potion = this.add.image(5 + 12 + 45, 5 + 4, AssetKeys.tilesImage, 94)
             .setOrigin(0, 0)
 
         this.barContainer.add(potion);

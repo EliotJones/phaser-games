@@ -14,11 +14,6 @@ export class SoundManager {
     }
 
     preloadAudio(): void {
-        this.scene.load.audio('bg-music', 'assets/music/bg-music.mp3');
-        this.scene.load.audio('coin', 'assets/music/coin.mp3');
-        this.scene.load.audio('game-over', 'assets/music/game-over.mp3');
-        this.scene.load.audio('item-collected', 'assets/music/item-collected.mp3');
-        this.scene.load.audio('power-up', 'assets/music/power-up.mp3');
     }
 
     createSounds(): void {
