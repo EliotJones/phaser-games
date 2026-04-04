@@ -8,7 +8,6 @@ export class Loader extends Phaser.Scene {
 
     preload() {
         // Scenery
-        // this.load.image(AssetKeys.tilesImage, 'assets/tileset/four-seasons-tileset.png');
         this.load.tilemapTiledJSON(AssetKeys.tilemap, 'assets/tileset/terrain.tmj');
         this.load.spritesheet(AssetKeys.tilesImage, 'assets/tileset/four-seasons-tileset.png',
             {

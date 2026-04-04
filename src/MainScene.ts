@@ -50,6 +50,13 @@ export class MainScene extends Phaser.Scene {
         this.soundManager.createSounds();
         this.soundManager.playBackgroundMusic();
 
+        this.anims.create({
+            key: 'collected',
+            frames: this.anims.generateFrameNames(AssetKeys.atlas, { prefix: 'item-feedback/item-feedback-', start: 1, end: 4 }),
+            frameRate: 16,
+            repeat: 0
+        })
+
         // Create Tiled tilemap from JSON file.
         const map = this.make.tilemap({
             key: 'tilemap'
@@ -122,6 +129,15 @@ export class MainScene extends Phaser.Scene {
             this.goals.removeTileAt(tile.x, tile.y);
             this.registry.set('score', this.score);
             this.soundManager.playCoinSound();
+
+            const fx = this.add.sprite(tile.getCenterX(), tile.getCenterY(), AssetKeys.atlas);
+
+            fx.play('collected');
+
+            fx.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+                fx.destroy();
+            });
+
         } else if (tile.properties.powerup === 'jump') {
             this.powerups.push('jump');
 

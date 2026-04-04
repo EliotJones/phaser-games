@@ -4,9 +4,9 @@ import { AssetKeys, GameInputState } from "./consts";
 type PlayerState = 'idle' | 'jumping' | 'falling' | 'running';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-    private canJump = true;
     private lastJumpTime = 0;
     private jumpPowerActive = false;
+    private lastOnGroundTime = 0;
 
     private readonly JUMP_COOLDOWN = 200; // ms
     private readonly NORMAL_JUMP_FORCE = -200;
@@ -14,6 +14,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     private readonly NORMAL_GRAVITY = 102;
     private readonly POWER_GRAVITY = 60;
     private readonly ACCEL = 500;
+    private readonly COYOTE_TIME = 500;
 
     private readonly animKeys = {
         idle: 'idle',
@@ -32,8 +33,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this).setDisplaySize(28, 28)
             .setBounce(0.15)
-            .setBodySize(18, 24)
-            .setOffset(6, 6)
+            .setBodySize(18, 22)
+            .setOffset(6, 9)
             .setMaxVelocity(100, 250)
             .setDragX(750)
             .setGravityY(102)
@@ -49,17 +50,16 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (this.body?.blocked.down) {
-            this.canJump = true;
+            this.lastOnGroundTime = time;
         }
 
-        // === Horizontal movement ===
         this.handleHorizontalMovement(input);
 
-        // === Jumping ===
-        if (input.jump &&
-            this.canJump &&
-            time > this.lastJumpTime + this.JUMP_COOLDOWN
-        ) {
+        const canJumpNow =
+            time < this.lastOnGroundTime + this.COYOTE_TIME &&
+            time > this.lastJumpTime + this.JUMP_COOLDOWN;
+
+        if (input.jump && canJumpNow) {
             this.performJump(time);
         }
     }
@@ -87,9 +87,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
                 this.setCurrentState('idle');
             }
         } else {
-            if (vy < 0) {
+            if (vy < -5) {
                 this.setCurrentState('jumping');
-            } else {
+            } else if (vy > 5) {
                 this.setCurrentState('falling');
             }
         }
@@ -156,7 +156,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         this.lastJumpTime = time;
-        this.canJump = false;
     }
 
     private createAnims(scene: Phaser.Scene) {
