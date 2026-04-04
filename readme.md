@@ -28,3 +28,4 @@ Jump potions are available in the Goals layer.
 
 - Pickup sound Sound Effect by <a href="https://pixabay.com/users/alexis_gaming_cam-50011695/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=367087">ALEXIS_GAMING_CAM</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=367087">Pixabay</a>
 - Powerup sound Sound Effect by <a href="https://pixabay.com/users/ribhavagrawal-39286533/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=230548">Ribhav Agrawal</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=230548">Pixabay</a>
+- Atlas by https://ansimuz.itch.io/sunny-land-pixel-game-art

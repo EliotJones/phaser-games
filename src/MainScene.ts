@@ -93,6 +93,16 @@ export class MainScene extends Phaser.Scene {
         camera.setZoom(SCALE);
 
         this.fKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+
+        this.player.on('usePowerup', () => {
+            this.powerups.pop();
+            this.registry.set('powerups', this.powerups);
+            this.soundManager.playPowerup();
+        });
+
+        this.player.on('hitDanger', (tile: Phaser.Tilemaps.Tile) => {
+            this.gameOver(tile);
+        }, this);
     }
 
     gameOver(tile: Phaser.Tilemaps.Tile) {
@@ -136,61 +146,13 @@ export class MainScene extends Phaser.Scene {
         this.rippleTime += delta;
         this.dangerDeco.x = Math.sin(this.rippleTime * 0.002) * 2;
 
-        const onGround = this.player.isOnGround();
-        if (!this.cursors || this.isGameOver) {
-            return;
-        }
+        this.player.handleInput({
+            activatePowerUp: Phaser.Input.Keyboard.JustDown(this.fKey),
+            goLeft: this.cursors.left.isDown,
+            goRight: this.cursors.right.isDown,
+            jump: Phaser.Input.Keyboard.JustDown(this.cursors.up),
+        }, time, this.powerups.length)
 
-        if (Phaser.Input.Keyboard.JustDown(this.fKey) && this.powerups.length > 0) {
-            this.powerups.pop();
-            this.registry.set('powerups', this.powerups);
-            this.jumpPowerActive = true;
-            this.player.setTint(0xff00ff)
-            this.soundManager.playPowerup();
-        }
-
-        // Reset jump ability when touching ground
-        if (onGround && !this.canJump) {
-            this.canJump = true;
-        }
-
-        if (this.cursors.left.isDown) {
-            if (this.player.body!.velocity.x > 0) {
-                this.player.setVelocityX(0)
-            }
-            this.player.setAccelerationX(-this.accel);
-
-            this.player.anims.play('left', true);
-        }
-        else if (this.cursors.right.isDown) {
-            if (this.player.body!.velocity.x < 0) {
-                this.player.setVelocityX(0)
-            }
-            this.player.setAccelerationX(this.accel);
-
-            this.player.anims.play('right', true);
-        }
-        else {
-            this.player.setAccelerationX(0);
-
-            this.player.anims.play('turn');
-        }
-
-        if (Phaser.Input.Keyboard.JustDown(this.cursors.up)
-            && this.canJump
-            && time > this.lastJumpTime + 200) {
-            if (this.jumpPowerActive) {
-                this.player.setVelocityY(-400);
-                this.player.setGravityY(60);
-                this.player.clearTint();
-                this.jumpPowerActive = false;
-            } else {
-                this.player.setVelocityY(-200);
-                this.player.setGravityY(102);
-            }
-
-            this.lastJumpTime = time;
-            this.canJump = false;
-        }
+        this.player.updateCurrentState();
     }
 }

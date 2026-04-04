@@ -6,7 +6,7 @@ export const SCALE = 2;
 export const AssetKeys = {
     tilesImage: 'tiles',
     tilemap: 'tilemap',
-    player: 'dude',
+    atlas: 'atlas',
     scorebar: 'scorebar',
     sounds: {
         music: 'bg-music',
@@ -16,3 +16,10 @@ export const AssetKeys = {
         powerUpActivated: 'power-up',
     },
 };
+
+export interface GameInputState {
+    goLeft: boolean;
+    goRight: boolean;
+    jump: boolean;
+    activatePowerUp: boolean;
+}

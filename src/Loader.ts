@@ -17,11 +17,8 @@ export class Loader extends Phaser.Scene {
             }
         );
 
-        // Animations
-        this.load.spritesheet(AssetKeys.player,
-            'assets/sprites/dude.png',
-            { frameWidth: 32, frameHeight: 48 }
-        );
+        // Atlas
+        this.load.atlas(AssetKeys.atlas, 'assets/atlas/atlas.png', 'assets/atlas/atlas.json');
 
         // UI
         this.load.image(AssetKeys.scorebar, 'assets/ui/scorebar.png');
