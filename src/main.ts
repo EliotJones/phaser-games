@@ -17,7 +17,7 @@ const game = new Phaser.Game({
                 x: 0,
                 y: 200
             },
-            debug: true
+            debug: false
         }
     },
     scale: {
