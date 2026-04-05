@@ -6,6 +6,7 @@ export const SCALE = 2;
 export const AssetKeys = {
     tilesImage: 'tiles',
     tilemap: 'tilemap',
+    bomb: 'bomb',
     atlas: 'atlas',
     scorebar: 'scorebar',
     sounds: {
@@ -15,6 +16,12 @@ export const AssetKeys = {
         itemCollected: 'item-collected',
         powerUpActivated: 'power-up',
     },
+    background: {
+        bg: 'bg',
+        close: 'close',
+        mid: 'mid',
+        far: 'far'
+    }
 };
 
 export interface GameInputState {

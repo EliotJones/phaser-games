@@ -21,8 +21,11 @@ export class MainScene extends Phaser.Scene {
 
     respawnablePowerupTiles = [{ x: 22, y: 34 }];
 
+    bgLayers: Phaser.GameObjects.TileSprite[] = [];
+
     powerups: string[] = [];
     fKey: Phaser.Input.Keyboard.Key;
+    bg: Phaser.GameObjects.Image;
 
     constructor() {
         super('main');
@@ -57,11 +60,28 @@ export class MainScene extends Phaser.Scene {
             repeat: 0
         })
 
+
         // Create Tiled tilemap from JSON file.
         const map = this.make.tilemap({
             key: 'tilemap'
         });
 
+        // Add background
+        const width = this.cameras.main.width * 1;
+        const height = this.cameras.main.height * 1;
+
+        this.bg = this.add.image(0, 0, 'bg').setOrigin(0).setScrollFactor(0.1)
+            .setDisplaySize(width, height);
+
+
+        this.bgLayers = [
+            this.add.tileSprite(0, 100, width, height, 'far').setOrigin(0).setDepth(0).setScrollFactor(0)
+                .setDisplaySize(width, height),
+            this.add.tileSprite(0, 100, width, height, 'mid').setOrigin(0).setDepth(0).setScrollFactor(0)
+                .setDisplaySize(width, height),
+            this.add.tileSprite(0, 100, width, height, 'close').setOrigin(0).setDepth(0).setScrollFactor(0)
+                .setDisplaySize(width, height),
+        ];
         const tileset = map.addTilesetImage('terrain', AssetKeys.tilesImage)!;
 
         const terrain = map.createLayer('Terrain', tileset)!;
@@ -85,7 +105,23 @@ export class MainScene extends Phaser.Scene {
 
         this.player = new Player(this, 10, 500);
 
+        const bomb = this.physics.add.sprite(180, 370, AssetKeys.bomb, 0);
+        this.anims.create({
+            key: 'bombidle',
+            frames: this.anims.generateFrameNumbers(AssetKeys.bomb, {
+                start: 0,
+                end: 6,
+            }),
+            repeat: -1,
+            frameRate: 5
+        });
+        bomb.setDisplaySize(22, 22)
+            .setBodySize(15, 20)
+            .setOffset(6, 4);
+        bomb.anims.play('bombidle');
+
         this.physics.add.collider(this.player, terrain);
+        this.physics.add.collider(bomb, terrain);
 
         this.physics.add.collider(this.player, danger, (p, t) => {
             this.gameOver(t as Phaser.Tilemaps.Tile);
@@ -161,6 +197,12 @@ export class MainScene extends Phaser.Scene {
 
         this.rippleTime += delta;
         this.dangerDeco.x = Math.sin(this.rippleTime * 0.002) * 2;
+
+        const camX = this.cameras.main.scrollX;
+
+        this.bgLayers[0].tilePositionX = camX * 0.1;
+        this.bgLayers[1].tilePositionX = camX * 0.2;
+        this.bgLayers[2].tilePositionX = camX * 0.3;
 
         this.player.handleInput({
             activatePowerUp: Phaser.Input.Keyboard.JustDown(this.fKey),
