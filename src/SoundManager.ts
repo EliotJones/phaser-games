@@ -98,7 +98,7 @@ export class SoundManager {
     }
 
     fadeIn(key: string, targetVolume?: number, duration: number = 1000): void {
-        const sound = this.sounds.get(key);
+        const sound = this.sounds.get(key) as any;
         if (sound) {
             const volume = targetVolume || (key === 'bg-music' ? this.musicVolume : this.sfxVolume);
             sound.setVolume(0);
@@ -124,7 +124,7 @@ export class SoundManager {
 
     setMusicVolume(volume: number): void {
         this.musicVolume = Phaser.Math.Clamp(volume, 0, 1);
-        const bgMusic = this.sounds.get('bg-music');
+        const bgMusic = this.sounds.get('bg-music') as any;
         if (bgMusic) {
             bgMusic.setVolume(this.musicVolume);
         }
@@ -135,7 +135,7 @@ export class SoundManager {
         // Update all non-music sounds
         this.sounds.forEach((sound, key) => {
             if (key !== 'bg-music') {
-                sound.setVolume(this.sfxVolume);
+                (sound as any).setVolume(this.sfxVolume);
             }
         });
     }

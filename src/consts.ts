@@ -30,3 +30,7 @@ export interface GameInputState {
     jump: boolean;
     activatePowerUp: boolean;
 }
+
+export const config = {
+    assetPath: import.meta.env.PROD ? '/assets/sidescroll-platformer/' : '/assets/',
+};
