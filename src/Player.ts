@@ -55,8 +55,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.handleHorizontalMovement(input);
 
+        const canCoyote = time < this.lastOnGroundTime + this.COYOTE_TIME;
         const canJumpNow =
-            time < this.lastOnGroundTime + this.COYOTE_TIME &&
+            (canCoyote && this.lastJumpTime < this.lastOnGroundTime) &&
             time > this.lastJumpTime + this.JUMP_COOLDOWN;
 
         if (input.jump && canJumpNow) {
@@ -119,10 +120,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     private activatePowerJump() {
-        this.scene.events.emit('usePowerup');
+        this.emit('usePowerup');
         this.jumpPowerActive = true;
         this.setTint(0xff22ff);
-        // sparkles and particles
     }
 
     private handleHorizontalMovement(input: GameInputState) {

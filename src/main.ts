@@ -2,13 +2,14 @@ import { NATIVE_HEIGHT, NATIVE_WIDTH, SCALE } from "./consts";
 import { MainScene } from "./MainScene";
 import { UIScene } from "./UIScene";
 import { Loader } from './Loader';
+import { VictoryScene } from './VictoryScene';
 
 const game = new Phaser.Game({
     type: Phaser.AUTO,
     width: NATIVE_WIDTH,
     height: NATIVE_HEIGHT,
     parent: 'phaser',
-    scene: [Loader, MainScene, UIScene],
+    scene: [Loader, MainScene, UIScene, VictoryScene],
     physics: {
         default: 'arcade',
         arcade: {

@@ -12,11 +12,11 @@ Jump potions are available in the Goals layer.
 
 ## To-dos
 
+- Fix double jump
 - Freeze and show restart on water/lava
 - Add enemies
 - Add jumping on enemies kills them
 - Add edge of map effects
-- Add game completed
 - Add bouncing danger, bomb sprite?
 - Add spikes
 - Bombs are neutral, they run from the player and hide in the ground, player can pick them up with action key (F) and throw them.

@@ -20,7 +20,7 @@ export const AssetKeys = {
         bg: 'bg',
         close: 'close',
         mid: 'mid',
-        far: 'far'
+        far: 'far',
     }
 };
 

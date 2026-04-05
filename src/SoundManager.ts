@@ -22,14 +22,21 @@ export class SoundManager {
         }
 
         // Create and store sound objects
-        this.sounds.set('bg-music', this.scene.sound.add('bg-music', {
-            volume: this.musicVolume,
-            loop: true
-        }));
+        let bgMusic = this.scene.sound.get('bg-music');
 
-        this.sounds.set('coin', this.scene.sound.add('coin', {
-            volume: this.sfxVolume
-        }));
+        if (!bgMusic) {
+            bgMusic = this.scene.sound.add('bg-music', { loop: true });
+        }
+
+        this.sounds.set('bg-music', bgMusic);
+
+        let coin = this.scene.sound.get('coin');
+
+        if (!coin) {
+            coin = this.scene.sound.add('coin', { volume: this.sfxVolume });
+        }
+
+        this.sounds.set('coin', coin);
 
         this.sounds.set('game-over', this.scene.sound.add('game-over', {
             volume: this.sfxVolume

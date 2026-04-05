@@ -82,6 +82,7 @@ export class MainScene extends Phaser.Scene {
             this.add.tileSprite(0, 100, width, height, 'close').setOrigin(0).setDepth(0).setScrollFactor(0)
                 .setDisplaySize(width, height),
         ];
+
         const tileset = map.addTilesetImage('terrain', AssetKeys.tilesImage)!;
 
         const terrain = map.createLayer('Terrain', tileset)!;
@@ -94,7 +95,6 @@ export class MainScene extends Phaser.Scene {
         terrain.setCollisionByExclusion([-1]);
         danger.setCollisionByExclusion([-1]);
         this.goals.setCollisionByExclusion([-1]);
-
         const camera = this.cameras.main;
 
         this.cursors = this.input.keyboard!.createCursorKeys()!;
@@ -110,7 +110,7 @@ export class MainScene extends Phaser.Scene {
             key: 'bombidle',
             frames: this.anims.generateFrameNumbers(AssetKeys.bomb, {
                 start: 0,
-                end: 6,
+                end: 5,
             }),
             repeat: -1,
             frameRate: 5
@@ -138,6 +138,7 @@ export class MainScene extends Phaser.Scene {
         this.fKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.F);
 
         this.player.on('usePowerup', () => {
+            // todo: sparkles and particles
             this.powerups.pop();
             this.registry.set('powerups', this.powerups);
             this.soundManager.playPowerup();
@@ -159,6 +160,16 @@ export class MainScene extends Phaser.Scene {
         this.scene.restart();
     }
 
+    private playCollectionEffect(x: number, y: number) {
+        const fx = this.add.sprite(x, y, AssetKeys.atlas);
+
+        fx.play('collected');
+
+        fx.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+            fx.destroy();
+        });
+    }
+
     overlapGoalTile(tile: Phaser.Tilemaps.Tile) {
         if (!!tile.properties.score) {
             this.score += tile.properties.score;
@@ -166,13 +177,7 @@ export class MainScene extends Phaser.Scene {
             this.registry.set('score', this.score);
             this.soundManager.playCoinSound();
 
-            const fx = this.add.sprite(tile.getCenterX(), tile.getCenterY(), AssetKeys.atlas);
-
-            fx.play('collected');
-
-            fx.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-                fx.destroy();
-            });
+            this.playCollectionEffect(tile.getCenterX(), tile.getCenterY());
 
         } else if (tile.properties.powerup === 'jump') {
             this.powerups.push('jump');
@@ -190,6 +195,12 @@ export class MainScene extends Phaser.Scene {
 
             this.soundManager.playItemCollected();
             this.registry.set('powerups', this.powerups);
+        } else if (tile.properties.victory) {
+            this.playCollectionEffect(tile.getCenterX(), tile.getCenterY());
+            this.time.delayedCall(1000, () => {
+                this.scene.stop('ui')
+                this.scene.start('victory', { score: this.score })
+            });
         }
     }
 
