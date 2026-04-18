@@ -1,12 +1,15 @@
 import { Scene } from "phaser";
 import { WorldMap } from "./Models";
 type Grid = Phaser.GameObjects.Grid;
+type Rect = Phaser.GameObjects.Rectangle;
 type Key = Phaser.Input.Keyboard.Key;
 type Group = Phaser.GameObjects.Group;
 
 export class MainScene extends Scene {
     worldGrid: Grid;
     offsetGrid: Grid;
+
+    highlightSquare: Rect;
 
     map: WorldMap;
 
@@ -129,6 +132,14 @@ export class MainScene extends Scene {
             }
         }
 
+        this.highlightSquare = this.add.rectangle(
+            padding,
+            padding,
+            cellSize,
+            cellSize,
+            0xffffff,
+            0.5).setOrigin(0);
+
         this.wgTextGroup.setVisible(false);
         this.prepKeys();
     }
@@ -145,6 +156,16 @@ export class MainScene extends Scene {
     }
 
     update(time: number, delta: number): void {
+        const mousePos = this.input.mousePointer.position;
+        const worldCell = this.getWorldCellIndexAt(mousePos.x, mousePos.y);
+        if (!worldCell) {
+            this.highlightSquare.setVisible(false);
+        } else {
+            const highlightPos = this.getXYTopLeftWorldIndex(worldCell.colIx, worldCell.rowIx);
+            this.highlightSquare.setPosition(highlightPos.x, highlightPos.y);
+            this.highlightSquare.setVisible(true);
+        }
+
         if (this.toggleWorldGrid()) {
             const newVal = !this.worldGrid.visible;
             this.worldGrid.setVisible(newVal);
@@ -169,5 +190,32 @@ export class MainScene extends Scene {
     private prepKeys() {
         this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.oKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.O);
+    }
+
+    private getWorldCellIndexAt(x: number, y: number) {
+        const padding = this.settings.padding;
+        const cellSize = this.settings.cellSize;
+
+        const leftBound = padding;
+        const topBound = padding;
+        const rightBound = (this.settings.numCells * cellSize) + padding;
+        const bottomBound = rightBound; // square
+
+        if (x < leftBound || x > rightBound
+            || y < topBound
+            || y > bottomBound) {
+            return null;
+        }
+
+        const colIx = Math.floor((x - padding) / cellSize);
+        const rowIx = Math.floor((y - padding) / cellSize);
+        return { colIx, rowIx };
+    }
+
+    private getXYTopLeftWorldIndex(colIx: number, rowIx: number) {
+        return {
+            x: this.settings.padding + (colIx * this.settings.cellSize),
+            y: this.settings.padding + (rowIx * this.settings.cellSize),
+        }
     }
 }
