@@ -1,6 +1,6 @@
 import { Scene } from "phaser";
 import { config } from "./config";
-import { Corners, RotatedTile } from "./Models";
+import { Corners, cornersToByte, RotatedTile } from "./Models";
 
 export class PreloaderScene extends Scene {
     constructor() {
@@ -32,8 +32,6 @@ export class PreloaderScene extends Scene {
         // Add as Phaser texture
         this.textures.addCanvas('autotile-grass', canvas);
     }
-
-    private cornersToByte = (corners: Corners) => (corners[0] << 3) | (corners[1] << 2) | (corners[2] << 1) | corners[3];
 
     private rotateCornersClockwise(c: Corners): Corners {
         // Rotate 90° clockwise: TL->BL, TR->TL, BL->BR, BR->TR
@@ -92,7 +90,7 @@ export class PreloaderScene extends Scene {
 
             let current = rawFrame;
             for (let ci = 0; ci < 4; ci++) {
-                const cornerByte = this.cornersToByte(current);
+                const cornerByte = cornersToByte(current);
 
                 const tileKey = `grass-${cornerByte}`;
 
@@ -115,6 +113,8 @@ export class PreloaderScene extends Scene {
         }
 
         this.createTilesetCanvas(rotatedTiles);
-        this.scene.start('main')
+        this.scene.start('main', {
+            rotatedTiles: rotatedTiles
+        })
     }
 }

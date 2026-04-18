@@ -1,5 +1,10 @@
 export type Corners = [number, number, number, number];
 
+
+export function cornersToByte(corners: Corners) {
+    return (corners[0] << 3) | (corners[1] << 2) | (corners[2] << 1) | corners[3];
+}
+
 export class WorldMap {
     private readonly cols: number;
     private readonly types: Types[];

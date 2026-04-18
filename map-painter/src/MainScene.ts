@@ -1,5 +1,5 @@
 import { Scene } from "phaser";
-import { WorldMap } from "./Models";
+import { Corners, cornersToByte, RotatedTile, WorldMap } from "./Models";
 type Grid = Phaser.GameObjects.Grid;
 type Rect = Phaser.GameObjects.Rectangle;
 type Key = Phaser.Input.Keyboard.Key;
@@ -11,6 +11,7 @@ export class MainScene extends Scene {
     offsetGrid: Grid;
 
     highlightSquare: Rect;
+    rotatedTiles: RotatedTile[];
 
     map: WorldMap;
     tileMap: TileMap;
@@ -45,7 +46,7 @@ export class MainScene extends Scene {
     preload() {
     }
 
-    create() {
+    create(data: any) {
         const padding = this.settings.padding;
         const gridDim = this.settings.gridDim;
         const cellSize = this.settings.cellSize;
@@ -60,6 +61,7 @@ export class MainScene extends Scene {
 
         const mudSet = this.tileMap.addTilesetImage('tiles', 'tiles');
         const tileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
+        this.rotatedTiles = data.rotatedTiles as RotatedTile[];
         const mudLayer = this.tileMap.createBlankLayer(this.layerKeys.mud, mudSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);;
         this.tileMap.createBlankLayer(this.layerKeys.grass, tileSet!)
@@ -70,8 +72,8 @@ export class MainScene extends Scene {
             }
         }
 
-        this.map = new WorldMap(this.settings.numCells,
-            this.settings.numCells);
+        this.map = new WorldMap(this.settings.numCells + 1,
+            this.settings.numCells + 1);
 
         this.worldGrid = this.add.grid(padding, padding,
             gridDim + cellSize, gridDim + cellSize,
@@ -157,14 +159,42 @@ export class MainScene extends Scene {
 
         // Get 4 affected offset grid tile indexes
         const affectedCells = this.getOffsetIndices(worldCell.colIx, worldCell.rowIx);
+
         for (let i = 0; i < affectedCells.length; i++) {
             const cell = affectedCells[i];
-            if (cell.x < 0 || cell.x >= this.settings.numCells
+            if (cell.x < 0 || cell.x > this.settings.numCells
                 || cell.y < 0 || cell.y > this.settings.numCells) {
                 continue;
             }
 
-            this.tileMap.putTileAt(5, cell.x, cell.y, undefined, this.layerKeys.grass);
+            const myCorners: Corners = [0, 0, 0, 0]
+            const myNeighbors = this.getWorldIndices(cell.x, cell.y);
+            for (let wI = 0; wI < myNeighbors.length; wI++) {
+                const worldCellIx = myNeighbors[wI];
+                if (worldCellIx.x < 0 || worldCellIx.y < 0) {
+                    myCorners[wI] = 1;
+                }
+
+                const typeAt = this.map.getType(worldCellIx.x, worldCellIx.y);
+                if (typeAt == 'grass') {
+                    myCorners[wI] = 1;
+                }
+            }
+
+            const myCornersByte = cornersToByte(myCorners);
+            const textureIndex = this.rotatedTiles.find(
+                x => x.corners == myCornersByte
+            );
+
+            if (textureIndex == null) {
+                continue;
+            }
+
+            this.tileMap.putTileAt(textureIndex.tileIndex,
+                cell.x,
+                cell.y,
+                undefined,
+                this.layerKeys.grass);
         }
     }
 
@@ -216,7 +246,7 @@ export class MainScene extends Scene {
 
         const leftBound = padding;
         const topBound = padding;
-        const rightBound = (this.settings.numCells * cellSize) + padding;
+        const rightBound = (this.settings.numCells * cellSize) + padding + cellSize;
         const bottomBound = rightBound; // square
 
         if (x < leftBound || x > rightBound
@@ -237,5 +267,14 @@ export class MainScene extends Scene {
             { x: colIx - 1, y: rowIx },
             { x: colIx, y: rowIx },
         ]
+    }
+
+    private getWorldIndices(colIx: number, rowIx: number) {
+        return [
+            { x: colIx, y: rowIx },
+            { x: colIx + 1, y: rowIx },
+            { x: colIx, y: rowIx + 1 },
+            { x: colIx + 1, y: rowIx + 1 },
+        ];
     }
 }
