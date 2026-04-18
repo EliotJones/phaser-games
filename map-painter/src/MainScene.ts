@@ -11,7 +11,7 @@ export class MainScene extends Scene {
     offsetGrid: Grid;
 
     highlightSquare: Rect;
-    rotatedTiles: RotatedTile[];
+    grassCornersToTextureIndexLookup: Map<number, number>;
 
     map: WorldMap;
     tileMap: TileMap;
@@ -61,7 +61,10 @@ export class MainScene extends Scene {
 
         const mudSet = this.tileMap.addTilesetImage('tiles', 'tiles');
         const tileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
-        this.rotatedTiles = data.rotatedTiles as RotatedTile[];
+        const rotatedTiles = data.rotatedTiles as RotatedTile[];
+        this.grassCornersToTextureIndexLookup = new Map();
+        rotatedTiles.forEach(x => this.grassCornersToTextureIndexLookup.set(x.corners, x.tileIndex));
+
         const mudLayer = this.tileMap.createBlankLayer(this.layerKeys.mud, mudSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);;
         this.tileMap.createBlankLayer(this.layerKeys.grass, tileSet!)
@@ -158,41 +161,39 @@ export class MainScene extends Scene {
         this.map.setType(worldCell.colIx, worldCell.rowIx, 'grass');
 
         // Get 4 affected offset grid tile indexes
-        const affectedCells = this.getOffsetIndices(worldCell.colIx, worldCell.rowIx);
+        const touchedOffsetCells = this.getOffsetIndices(worldCell.colIx, worldCell.rowIx);
 
-        for (let i = 0; i < affectedCells.length; i++) {
-            const cell = affectedCells[i];
-            if (cell.x < 0 || cell.x > this.settings.numCells
-                || cell.y < 0 || cell.y > this.settings.numCells) {
+        for (let i = 0; i < touchedOffsetCells.length; i++) {
+            const offsetCell = touchedOffsetCells[i];
+            if (!this.validOffsetIndex(offsetCell.x, offsetCell.y)) {
                 continue;
             }
 
-            const myCorners: Corners = [0, 0, 0, 0]
-            const myNeighbors = this.getWorldIndices(cell.x, cell.y);
-            for (let wI = 0; wI < myNeighbors.length; wI++) {
-                const worldCellIx = myNeighbors[wI];
+            const offsetCellCorners: Corners = [0, 0, 0, 0]
+            const worldCellNeighbors = this.getWorldIndices(offsetCell.x, offsetCell.y);
+
+            for (let wI = 0; wI < worldCellNeighbors.length; wI++) {
+                const worldCellIx = worldCellNeighbors[wI];
                 if (worldCellIx.x < 0 || worldCellIx.y < 0) {
-                    myCorners[wI] = 1;
+                    offsetCellCorners[wI] = 1;
                 }
 
                 const typeAt = this.map.getType(worldCellIx.x, worldCellIx.y);
                 if (typeAt == 'grass') {
-                    myCorners[wI] = 1;
+                    offsetCellCorners[wI] = 1;
                 }
             }
 
-            const myCornersByte = cornersToByte(myCorners);
-            const textureIndex = this.rotatedTiles.find(
-                x => x.corners == myCornersByte
-            );
+            const myCornersByte = cornersToByte(offsetCellCorners);
+            const textureIndex = this.grassCornersToTextureIndexLookup.get(myCornersByte);
 
             if (textureIndex == null) {
                 continue;
             }
 
-            this.tileMap.putTileAt(textureIndex.tileIndex,
-                cell.x,
-                cell.y,
+            this.tileMap.putTileAt(textureIndex,
+                offsetCell.x,
+                offsetCell.y,
                 undefined,
                 this.layerKeys.grass);
         }
@@ -246,7 +247,7 @@ export class MainScene extends Scene {
 
         const leftBound = padding;
         const topBound = padding;
-        const rightBound = (this.settings.numCells * cellSize) + padding + cellSize;
+        const rightBound = (this.settings.numCells * cellSize) + padding + (cellSize / 2);
         const bottomBound = rightBound; // square
 
         if (x < leftBound || x > rightBound
@@ -276,5 +277,10 @@ export class MainScene extends Scene {
             { x: colIx, y: rowIx + 1 },
             { x: colIx + 1, y: rowIx + 1 },
         ];
+    }
+
+    private validOffsetIndex(colIx: number, rowIx: number) {
+        return colIx >= 0 && colIx < this.settings.numCells
+            && rowIx >= 0 && rowIx < this.settings.numCells;
     }
 }

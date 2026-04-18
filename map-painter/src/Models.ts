@@ -20,7 +20,7 @@ export class WorldMap {
 
     getType(x: number, y: number): Types {
         const ix = y * this.cols + x;
-        if (ix > this.types.length) {
+        if (ix >= this.types.length || ix < 0) {
             return 'mud';
         }
 
