@@ -8,7 +8,7 @@ export class WorldMap {
         this.types = [];
         for (let rowIx = 0; rowIx < rows; rowIx++) {
             for (let colIx = 0; colIx < cols; colIx++) {
-                this.types.push('dirt');
+                this.types.push('mud');
             }
         }
     }
@@ -16,7 +16,7 @@ export class WorldMap {
     getType(x: number, y: number): Types {
         const ix = y * this.cols + x;
         if (ix > this.types.length) {
-            return 'dirt';
+            return 'mud';
         }
 
         return this.types[ix];
@@ -33,7 +33,7 @@ export class WorldMap {
     }
 }
 
-export type Types = 'dirt' | 'grass';
+export type Types = 'mud' | 'grass';
 
 export interface RotatedTile {
     corners: number; // store as a nibble 0bTLTRBLBR

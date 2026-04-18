@@ -114,8 +114,6 @@ export class PreloaderScene extends Scene {
             }
         }
 
-        console.log('rot', rotatedTiles)
-
         this.createTilesetCanvas(rotatedTiles);
         this.scene.start('main')
     }

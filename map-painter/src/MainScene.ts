@@ -4,6 +4,7 @@ type Grid = Phaser.GameObjects.Grid;
 type Rect = Phaser.GameObjects.Rectangle;
 type Key = Phaser.Input.Keyboard.Key;
 type Group = Phaser.GameObjects.Group;
+type TileMap = Phaser.Tilemaps.Tilemap;
 
 export class MainScene extends Scene {
     worldGrid: Grid;
@@ -12,12 +13,18 @@ export class MainScene extends Scene {
     highlightSquare: Rect;
 
     map: WorldMap;
+    tileMap: TileMap;
 
     wgTextGroup: Group;
     ogTextGroup: Group;
 
     wKey: Key;
     oKey: Key;
+
+    private readonly layerKeys = {
+        mud: 'mud',
+        grass: 'grass',
+    };
 
     private readonly settings = {
         cellSize: 32,
@@ -44,53 +51,24 @@ export class MainScene extends Scene {
         const cellSize = this.settings.cellSize;
         const halfCellSize = this.settings.halfCellSize;
 
-        const tileMap = this.make.tilemap({
+        this.tileMap = this.make.tilemap({
             width: this.settings.numCells,
             height: this.settings.numCells,
             tileHeight: this.settings.cellSize,
             tileWidth: this.settings.cellSize,
         });
 
-        const mudSet = tileMap.addTilesetImage('tiles', 'tiles');
-        const tileSet = tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
-        const mudLayer = tileMap.createBlankLayer('mud', mudSet!)
+        const mudSet = this.tileMap.addTilesetImage('tiles', 'tiles');
+        const tileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
+        const mudLayer = this.tileMap.createBlankLayer(this.layerKeys.mud, mudSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);;
-        const layer = tileMap.createBlankLayer('layer', tileSet!)
+        this.tileMap.createBlankLayer(this.layerKeys.grass, tileSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
         for (let y = 0; y < this.settings.numCells; y++) {
             for (let x = 0; x < this.settings.numCells; x++) {
                 mudLayer?.putTileAt(5, x, y);
-                layer!.putTileAt(0, x, y);
             }
         }
-
-        layer?.putTileAt(1, 10, 10);
-        layer?.putTileAt(2, 11, 10);
-        layer?.putTileAt(3, 12, 10);
-        layer?.putTileAt(4, 13, 10);
-        layer?.putTileAt(5, 14, 10);
-        layer?.putTileAt(6, 15, 10);
-        layer?.putTileAt(7, 16, 10);
-        layer?.putTileAt(8, 17, 10);
-        layer?.putTileAt(9, 18, 10);
-        layer?.putTileAt(10, 19, 10);
-
-        layer?.putTileAt(11, 0, 11);
-        layer?.putTileAt(12, 1, 11);
-        layer?.putTileAt(13, 2, 11);
-        layer?.putTileAt(14, 3, 11);
-
-        layer?.putTileAt(13, 17, 19);
-        layer?.putTileAt(13, 18, 19);
-        layer?.putTileAt(4, 19, 19);
-        layer?.putTileAt(12, 19, 18);
-        layer?.putTileAt(12, 19, 17);
-        layer?.putTileAt(3, 19, 16);
-
-        layer?.putTileAt(10, 18, 16);
-        layer?.putTileAt(12, 18, 15);
-
-        layer?.removeTileAt(19, 15);
 
         this.map = new WorldMap(this.settings.numCells,
             this.settings.numCells);
@@ -138,10 +116,15 @@ export class MainScene extends Scene {
             cellSize,
             cellSize,
             0xffffff,
-            0.5).setOrigin(0);
+            0.5)
+            .setOrigin(0)
+            .setVisible(false);
 
         this.wgTextGroup.setVisible(false);
         this.prepKeys();
+
+        this.input.on('pointermove', this.pointerMove.bind(this));
+        this.input.on('pointerdown', this.pointerDown.bind(this));
     }
 
     private cellTopLeft(x: number, y: number, isWorld: boolean) {
@@ -155,17 +138,52 @@ export class MainScene extends Scene {
         return { x: xOffset, y: yOffset };
     }
 
-    update(time: number, delta: number): void {
-        const mousePos = this.input.mousePointer.position;
-        const worldCell = this.getWorldCellIndexAt(mousePos.x, mousePos.y);
+    private pointerDown(pointer: Phaser.Input.Pointer) {
+        this.requestGrassAt(pointer.x, pointer.y);
+    }
+
+    private requestGrassAt(x: number, y: number) {
+        const worldCell = this.getWorldCellIndexAt(x, y);
+        if (!worldCell) {
+            return;
+        }
+
+        const mapType = this.map.getType(worldCell.colIx, worldCell.rowIx);
+        if (mapType == 'grass') {
+            return;
+        }
+
+        this.map.setType(worldCell.colIx, worldCell.rowIx, 'grass');
+
+        // Get 4 affected offset grid tile indexes
+        const affectedCells = this.getOffsetIndices(worldCell.colIx, worldCell.rowIx);
+        for (let i = 0; i < affectedCells.length; i++) {
+            const cell = affectedCells[i];
+            if (cell.x < 0 || cell.x >= this.settings.numCells
+                || cell.y < 0 || cell.y > this.settings.numCells) {
+                continue;
+            }
+
+            this.tileMap.putTileAt(5, cell.x, cell.y, undefined, this.layerKeys.grass);
+        }
+    }
+
+    private pointerMove(pointer: Phaser.Input.Pointer) {
+        const worldCell = this.getWorldCellIndexAt(pointer.x, pointer.y);
         if (!worldCell) {
             this.highlightSquare.setVisible(false);
         } else {
-            const highlightPos = this.getXYTopLeftWorldIndex(worldCell.colIx, worldCell.rowIx);
+            const highlightPos = this.cellTopLeft(worldCell.colIx, worldCell.rowIx, true);
             this.highlightSquare.setPosition(highlightPos.x, highlightPos.y);
             this.highlightSquare.setVisible(true);
         }
 
+        if (pointer.isDown) {
+            this.requestGrassAt(pointer.x, pointer.y);
+        }
+    }
+
+    update(time: number, delta: number): void {
         if (this.toggleWorldGrid()) {
             const newVal = !this.worldGrid.visible;
             this.worldGrid.setVisible(newVal);
@@ -212,10 +230,12 @@ export class MainScene extends Scene {
         return { colIx, rowIx };
     }
 
-    private getXYTopLeftWorldIndex(colIx: number, rowIx: number) {
-        return {
-            x: this.settings.padding + (colIx * this.settings.cellSize),
-            y: this.settings.padding + (rowIx * this.settings.cellSize),
-        }
+    private getOffsetIndices(colIx: number, rowIx: number) {
+        return [
+            { x: colIx - 1, y: rowIx - 1 },
+            { x: colIx, y: rowIx - 1 },
+            { x: colIx - 1, y: rowIx },
+            { x: colIx, y: rowIx },
+        ]
     }
 }
