@@ -215,6 +215,11 @@ export class MainScene extends Scene {
                     offsetCellCorners[wI] = 1;
                 }
 
+                // Remove other layer tiles above the currently drawn tile.
+                // on borders where there are higher priority neighbors treat
+                // those as occupied by the same type, so if we're at a boundary
+                // from sand to grass we should draw a full sand tile so that there's
+                // no mud visible between the 2 boundaries.
                 const typeAt = this.map.getType(worldCellIx.x, worldCellIx.y);
                 if (typeAt == type) {
                     offsetCellCorners[wI] = 1;
