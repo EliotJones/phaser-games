@@ -38,7 +38,7 @@ export class WorldMap {
     }
 }
 
-export type Types = 'mud' | 'grass';
+export type Types = 'mud' | 'sand' | 'grass';
 
 export interface RotatedTile {
     corners: number; // store as a nibble 0bTLTRBLBR

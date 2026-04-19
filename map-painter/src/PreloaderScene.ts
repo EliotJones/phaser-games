@@ -3,6 +3,29 @@ import { config } from "./config";
 import { Corners, cornersToByte, RotatedTile } from "./Models";
 
 export class PreloaderScene extends Scene {
+    readonly grassCorners: Corners[] = [
+        [1, 1, 1, 1],
+        [0, 1, 0, 0],
+        [1, 1, 1, 1],
+        [0, 1, 1, 1],
+        [0, 1, 1, 0],
+        [0, 0, 1, 0],
+        [0, 0, 1, 1],
+        [0, 1, 1, 1],
+    ];
+
+    readonly sandCorners: Corners[] = [
+        [1, 1, 1, 1],
+        [1, 1, 1, 1],
+        [0, 1, 1, 0],
+        [1, 0, 1, 0],
+        [1, 1, 0, 0],
+        [1, 0, 0, 0],
+        [1, 0, 1, 1],
+        [0, 1, 1, 1],
+        [0, 1, 0, 0],
+    ];
+
     constructor() {
         super({ key: 'preloader' });
     }
@@ -15,9 +38,13 @@ export class PreloaderScene extends Scene {
             frameWidth: 32,
             frameHeight: 32,
         });
+        this.load.spritesheet('sand-tiles', 'tiles/sand-tiles.png', {
+            frameWidth: 32,
+            frameHeight: 32,
+        });
     }
 
-    private createTilesetCanvas(tiles: RotatedTile[]) {
+    private createTilesetCanvas(tiles: RotatedTile[], prefix: string) {
         const tileSize = 32;
         const canvas = document.createElement('canvas');
         canvas.width = tileSize * tiles.length;
@@ -30,7 +57,7 @@ export class PreloaderScene extends Scene {
         });
 
         // Add as Phaser texture
-        this.textures.addCanvas('autotile-grass', canvas);
+        this.textures.addCanvas(`autotile-${prefix}`, canvas);
     }
 
     private rotateCornersClockwise(c: Corners): Corners {
@@ -67,7 +94,7 @@ export class PreloaderScene extends Scene {
     create() {
         // Defines which frame in the spritesheet has which corners occupied.
         /*
-         * Input has 5 frames
+         * Input has 9 frames
          * # [frame ix]: [tl, tr, bl, br]
          * [0,0]: [1, 1, 1, 1] (no changes)
          * [1,0]: [0, 1, 0, 0] (4 total) [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]
@@ -75,46 +102,54 @@ export class PreloaderScene extends Scene {
          * [1,1]: [0, 1, 1, 0] (2 total) [1, 0, 0, 1]
          * [0,2]: [0, 0, 1, 1] (4 total) [1, 1, 0, 0], [1, 0, 1, 0], [1, 0, 0, 1]
         */
-        const rawFrames: Corners[] = [
-            [1, 1, 1, 1],
-            [0, 1, 0, 0],
-            [0, 1, 1, 1],
-            [0, 1, 1, 0],
-            [0, 0, 1, 1]];
+        const grassTiles = this.createRotatedTileset('tiles', this.grassCorners, 'grass');
+        const sandTiles = this.createRotatedTileset('sand-tiles', this.sandCorners, 'sand');
+
+        this.scene.start('main', {
+            grassTiles: grassTiles,
+            sandTiles: sandTiles,
+        })
+    }
+
+    createRotatedTileset(tilesetName: string, corners: Corners[], prefix: string)
+        : RotatedTile[] {
 
         const rotatedTiles: RotatedTile[] = [];
-        const seen = new Set<number>();
+        const seen = new Map<number, number>();
         let nextTileIndex = 0;
-        for (let i = 0; i < rawFrames.length; i++) {
-            const rawFrame = rawFrames[i];
+        const plainTile = cornersToByte([1, 1, 1, 1]);
+        for (let i = 0; i < corners.length; i++) {
+            const rawFrame = corners[i];
 
             let current = rawFrame;
             for (let ci = 0; ci < 4; ci++) {
                 const cornerByte = cornersToByte(current);
+                const prevCount = seen.get(cornerByte) || 0;
 
-                const tileKey = `grass-${cornerByte}`;
+                const tileKey = `${prefix}-${cornerByte}-${prevCount}`;
 
-                if (!seen.has(cornerByte)) {
-                    seen.add(cornerByte);
+                seen.set(cornerByte, prevCount + 1);
 
-                    this.rotateFrame(i, 'tiles', ci * 90, tileKey);
+                this.rotateFrame(i, tilesetName, ci * 90, tileKey);
 
-                    rotatedTiles.push({
-                        corners: cornerByte,
-                        tileIndex: nextTileIndex,
-                        textureKey: tileKey
-                    });
+                rotatedTiles.push({
+                    corners: cornerByte,
+                    tileIndex: nextTileIndex,
+                    textureKey: tileKey
+                });
 
-                    nextTileIndex++;
-                }
+                nextTileIndex++;
 
                 current = this.rotateCornersClockwise(current);
+
+                if (cornerByte == plainTile) {
+                    break;
+                }
             }
         }
 
-        this.createTilesetCanvas(rotatedTiles);
-        this.scene.start('main', {
-            rotatedTiles: rotatedTiles
-        })
+        this.createTilesetCanvas(rotatedTiles, prefix);
+
+        return rotatedTiles;
     }
 }

@@ -1,5 +1,5 @@
 import { Scene } from "phaser";
-import { Corners, cornersToByte, RotatedTile, WorldMap } from "./Models";
+import { Corners, cornersToByte, RotatedTile, Types, WorldMap } from "./Models";
 type Grid = Phaser.GameObjects.Grid;
 type Rect = Phaser.GameObjects.Rectangle;
 type Key = Phaser.Input.Keyboard.Key;
@@ -11,7 +11,7 @@ export class MainScene extends Scene {
     offsetGrid: Grid;
 
     highlightSquare: Rect;
-    grassCornersToTextureIndexLookup: Map<number, number>;
+    typeCornersToTextureIndexLookup: Map<Types, Map<number, number[]>>;
 
     map: WorldMap;
     tileMap: TileMap;
@@ -19,12 +19,16 @@ export class MainScene extends Scene {
     wgTextGroup: Group;
     ogTextGroup: Group;
 
-    wKey: Key;
     oKey: Key;
+    sKey: Key;
+    wKey: Key;
+
+    private readonly priority: Types[] = ['mud', 'sand', 'grass'];
 
     private readonly layerKeys = {
         mud: 'mud',
         grass: 'grass',
+        sand: 'sand',
     };
 
     private readonly settings = {
@@ -46,6 +50,21 @@ export class MainScene extends Scene {
     preload() {
     }
 
+    createLookupForRotatedTiles(rotatedTiles: RotatedTile[]): Map<number, number[]> {
+        const m: Map<number, number[]> = new Map();
+        for (let i = 0; i < rotatedTiles.length; i++) {
+            const element = rotatedTiles[i];
+            const current = m.get(element.corners);
+            if (!current) {
+                m.set(element.corners, [element.tileIndex]);
+            } else {
+                current.push(element.tileIndex);
+            }
+        }
+
+        return m;
+    }
+
     create(data: any) {
         const padding = this.settings.padding;
         const gridDim = this.settings.gridDim;
@@ -60,18 +79,25 @@ export class MainScene extends Scene {
         });
 
         const mudSet = this.tileMap.addTilesetImage('tiles', 'tiles');
-        const tileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
-        const rotatedTiles = data.rotatedTiles as RotatedTile[];
-        this.grassCornersToTextureIndexLookup = new Map();
-        rotatedTiles.forEach(x => this.grassCornersToTextureIndexLookup.set(x.corners, x.tileIndex));
+        const grassTileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
+        const sandTileSet = this.tileMap.addTilesetImage('autotile-sand', 'autotile-sand', 32, 32, 0, 0);
+        const grassTiles = data.grassTiles as RotatedTile[];
+        const sandTiles = data.sandTiles as RotatedTile[];
+        this.typeCornersToTextureIndexLookup = new Map();
+        const grass = this.createLookupForRotatedTiles(grassTiles);
+        const sand = this.createLookupForRotatedTiles(sandTiles);
+        this.typeCornersToTextureIndexLookup.set('grass', grass);
+        this.typeCornersToTextureIndexLookup.set('sand', sand);
 
         const mudLayer = this.tileMap.createBlankLayer(this.layerKeys.mud, mudSet!)
-            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);;
-        this.tileMap.createBlankLayer(this.layerKeys.grass, tileSet!)
+            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+        const sandLayer = this.tileMap.createBlankLayer(this.layerKeys.sand, sandTileSet!)
+            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+        this.tileMap.createBlankLayer(this.layerKeys.grass, grassTileSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
         for (let y = 0; y < this.settings.numCells; y++) {
             for (let x = 0; x < this.settings.numCells; x++) {
-                mudLayer?.putTileAt(5, x, y);
+                mudLayer?.putTileAt(8, x, y);
             }
         }
 
@@ -92,7 +118,9 @@ export class MainScene extends Scene {
             cellSize, cellSize,
             undefined, undefined,
             this.settings.offsetGridColor,
-            this.settings.offsetGridOpacity).setOrigin(0, 0);
+            this.settings.offsetGridOpacity)
+            .setOrigin(0, 0)
+            .setVisible(false);
 
         this.wgTextGroup = this.add.group();
         this.ogTextGroup = this.add.group();
@@ -126,6 +154,7 @@ export class MainScene extends Scene {
             .setVisible(false);
 
         this.wgTextGroup.setVisible(false);
+        this.ogTextGroup.setVisible(false);
         this.prepKeys();
 
         this.input.on('pointermove', this.pointerMove.bind(this));
@@ -144,24 +173,32 @@ export class MainScene extends Scene {
     }
 
     private pointerDown(pointer: Phaser.Input.Pointer) {
-        this.requestGrassAt(pointer.x, pointer.y);
+        const reqType = this.sKey.isDown ? 'sand' : 'grass';
+        this.requestLayerAt(pointer.x, pointer.y, reqType);
     }
 
-    private requestGrassAt(x: number, y: number) {
+    private requestLayerAt(x: number, y: number, type: Types) {
         const worldCell = this.getWorldCellIndexAt(x, y);
         if (!worldCell) {
             return;
         }
 
         const mapType = this.map.getType(worldCell.colIx, worldCell.rowIx);
-        if (mapType == 'grass') {
+        if (mapType == type) {
             return;
         }
 
-        this.map.setType(worldCell.colIx, worldCell.rowIx, 'grass');
+        this.map.setType(worldCell.colIx, worldCell.rowIx, type);
 
         // Get 4 affected offset grid tile indexes
         const touchedOffsetCells = this.getOffsetIndices(worldCell.colIx, worldCell.rowIx);
+
+        const tileLookup = this.typeCornersToTextureIndexLookup.get(type);
+        if (!tileLookup) {
+            return;
+        }
+
+        const priority = this.priority.indexOf(type);
 
         for (let i = 0; i < touchedOffsetCells.length; i++) {
             const offsetCell = touchedOffsetCells[i];
@@ -179,23 +216,32 @@ export class MainScene extends Scene {
                 }
 
                 const typeAt = this.map.getType(worldCellIx.x, worldCellIx.y);
-                if (typeAt == 'grass') {
+                if (typeAt == type) {
                     offsetCellCorners[wI] = 1;
+                } else {
+                    const otherPriority = this.priority.indexOf(typeAt)
+
+                    if (otherPriority > priority) {
+                        offsetCellCorners[wI] = 1;
+                    }
                 }
             }
 
             const myCornersByte = cornersToByte(offsetCellCorners);
-            const textureIndex = this.grassCornersToTextureIndexLookup.get(myCornersByte);
+            const textureIndex = tileLookup.get(myCornersByte);
 
-            if (textureIndex == null) {
+            if (textureIndex == null || textureIndex.length === 0) {
                 continue;
             }
 
-            this.tileMap.putTileAt(textureIndex,
+            var rnd = Phaser.Math.RND;
+
+            const myTile = rnd.between(0, textureIndex.length - 1);
+            this.tileMap.putTileAt(textureIndex[myTile],
                 offsetCell.x,
                 offsetCell.y,
                 undefined,
-                this.layerKeys.grass);
+                type == 'grass' ? this.layerKeys.grass : this.layerKeys.sand);
         }
     }
 
@@ -210,7 +256,8 @@ export class MainScene extends Scene {
         }
 
         if (pointer.isDown) {
-            this.requestGrassAt(pointer.x, pointer.y);
+            const reqType = this.sKey.isDown ? 'sand' : 'grass';
+            this.requestLayerAt(pointer.x, pointer.y, reqType);
         }
     }
 
@@ -237,8 +284,9 @@ export class MainScene extends Scene {
     }
 
     private prepKeys() {
-        this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.oKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.O);
+        this.sKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+        this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     }
 
     private getWorldCellIndexAt(x: number, y: number) {
