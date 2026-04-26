@@ -183,71 +183,104 @@ export class MainScene extends Scene {
             return;
         }
 
-        const mapType = this.map.getType(worldCell.colIx, worldCell.rowIx);
+        const mapType = this.map.getType(worldCell.wx, worldCell.wy);
         if (mapType == type) {
             return;
         }
 
-        this.map.setType(worldCell.colIx, worldCell.rowIx, type);
+        // 1. Update the type in the world map.
+        this.map.setType(worldCell.wx, worldCell.wy, type);
 
         // Get 4 affected offset grid tile indexes
-        const touchedOffsetCells = this.getOffsetIndices(worldCell.colIx, worldCell.rowIx);
+        const touchedOffsetCells = this.getOffsetIndices(worldCell.wx, worldCell.wy);
 
-        const tileLookup = this.typeCornersToTextureIndexLookup.get(type);
+        // 2. Update the rendering layers.
+        for (let i = 0; i < touchedOffsetCells.length; i++) {
+            const offsetCell = touchedOffsetCells[i];
+            this.updateOffsetGridCell(offsetCell);
+        }
+    }
+
+    private updateOffsetGridCell(offsetCell: OffsetCellIndex) {
+        if (!this.validOffsetIndex(offsetCell)) {
+            return;
+        }
+
+        const worldCellNeighbors = this.getWorldIndices(offsetCell.x, offsetCell.y);
+
+        // Update each layer based on what the world map neighbors are set to.
+        for (let tI = 1; tI < this.priority.length; tI++) {
+            const layerType = this.priority[tI];
+            this.updateOffsetGridForLayer(
+                worldCellNeighbors,
+                offsetCell,
+                layerType,
+                tI);
+        }
+    }
+
+    private updateOffsetGridForLayer(
+        worldCellNeighbors: WorldCellIndex[],
+        offsetCell: OffsetCellIndex,
+        layerType: Types,
+        layerPriorityIndex: number) {
+        const offsetCellCorners: Corners = [0, 0, 0, 0];
+        const layerKey = layerType == 'grass' ? this.layerKeys.grass : this.layerKeys.sand;
+
+        const tileLookup = this.typeCornersToTextureIndexLookup.get(layerType);
         if (!tileLookup) {
             return;
         }
 
-        const priority = this.priority.indexOf(type);
+        let shouldRender = false;
 
-        for (let i = 0; i < touchedOffsetCells.length; i++) {
-            const offsetCell = touchedOffsetCells[i];
-            if (!this.validOffsetIndex(offsetCell.x, offsetCell.y)) {
-                continue;
+        for (let wI = 0; wI < worldCellNeighbors.length; wI++) {
+            const worldCellIx = worldCellNeighbors[wI];
+            if (worldCellIx.wx < 0 || worldCellIx.wy < 0) {
+                offsetCellCorners[wI] = 1;
             }
 
-            const offsetCellCorners: Corners = [0, 0, 0, 0]
-            const worldCellNeighbors = this.getWorldIndices(offsetCell.x, offsetCell.y);
+            // Remove other layer tiles above the currently drawn tile.
+            // on borders where there are higher priority neighbors treat
+            // those as occupied by the same type, so if we're at a boundary
+            // from sand to grass we should draw a full sand tile so that there's
+            // no mud visible between the 2 boundaries.
+            const typeAt = this.map.getType(worldCellIx.wx, worldCellIx.wy);
 
-            for (let wI = 0; wI < worldCellNeighbors.length; wI++) {
-                const worldCellIx = worldCellNeighbors[wI];
-                if (worldCellIx.x < 0 || worldCellIx.y < 0) {
-                    offsetCellCorners[wI] = 1;
-                }
-
-                // Remove other layer tiles above the currently drawn tile.
-                // on borders where there are higher priority neighbors treat
-                // those as occupied by the same type, so if we're at a boundary
-                // from sand to grass we should draw a full sand tile so that there's
-                // no mud visible between the 2 boundaries.
-                const typeAt = this.map.getType(worldCellIx.x, worldCellIx.y);
-                if (typeAt == type) {
-                    offsetCellCorners[wI] = 1;
-                } else {
-                    const otherPriority = this.priority.indexOf(typeAt)
-
-                    if (otherPriority > priority) {
-                        offsetCellCorners[wI] = 1;
-                    }
-                }
+            if (typeAt === layerType) {
+                shouldRender = true;
             }
 
-            const myCornersByte = cornersToByte(offsetCellCorners);
-            const textureIndex = tileLookup.get(myCornersByte);
+            const neighborPriority = this.priority.indexOf(typeAt);
+            const currentPriority = layerPriorityIndex;
 
-            if (textureIndex == null || textureIndex.length === 0) {
-                continue;
+            if (neighborPriority >= currentPriority) {
+                offsetCellCorners[wI] = 1;
+            } else {
+                offsetCellCorners[wI] = 0;
             }
-
-            var rnd = Phaser.Math.RND;
-
-            const myTile = rnd.between(0, textureIndex.length - 1);
-            this.tileMap.putTileAt(textureIndex[myTile],
-                offsetCell.x,
-                offsetCell.y,
-                undefined,
-                type == 'grass' ? this.layerKeys.grass : this.layerKeys.sand);
         }
+
+        if (!shouldRender) {
+            this.tileMap.removeTileAt(offsetCell.x, offsetCell.y, true, false, layerKey);
+            return;
+        }
+
+        const myCornersByte = cornersToByte(offsetCellCorners);
+        const textureIndex = tileLookup.get(myCornersByte);
+
+        if (textureIndex == null || textureIndex.length === 0) {
+            return;
+        }
+
+        var rnd = Phaser.Math.RND;
+
+        const myTile = rnd.between(0, textureIndex.length - 1);
+        this.tileMap.putTileAt(textureIndex[myTile],
+            offsetCell.x,
+            offsetCell.y,
+            undefined,
+            layerKey);
     }
 
     private pointerMove(pointer: Phaser.Input.Pointer) {
@@ -255,7 +288,7 @@ export class MainScene extends Scene {
         if (!worldCell) {
             this.highlightSquare.setVisible(false);
         } else {
-            const highlightPos = this.cellTopLeft(worldCell.colIx, worldCell.rowIx, true);
+            const highlightPos = this.cellTopLeft(worldCell.wx, worldCell.wy, true);
             this.highlightSquare.setPosition(highlightPos.x, highlightPos.y);
             this.highlightSquare.setVisible(true);
         }
@@ -294,7 +327,7 @@ export class MainScene extends Scene {
         this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     }
 
-    private getWorldCellIndexAt(x: number, y: number) {
+    private getWorldCellIndexAt(x: number, y: number): WorldCellIndex | null {
         const padding = this.settings.padding;
         const cellSize = this.settings.cellSize;
 
@@ -311,10 +344,10 @@ export class MainScene extends Scene {
 
         const colIx = Math.floor((x - padding) / cellSize);
         const rowIx = Math.floor((y - padding) / cellSize);
-        return { colIx, rowIx };
+        return { wx: colIx, wy: rowIx };
     }
 
-    private getOffsetIndices(colIx: number, rowIx: number) {
+    private getOffsetIndices(colIx: number, rowIx: number): OffsetCellIndex[] {
         return [
             { x: colIx - 1, y: rowIx - 1 },
             { x: colIx, y: rowIx - 1 },
@@ -323,17 +356,27 @@ export class MainScene extends Scene {
         ]
     }
 
-    private getWorldIndices(colIx: number, rowIx: number) {
+    private getWorldIndices(colIx: number, rowIx: number): WorldCellIndex[] {
         return [
-            { x: colIx, y: rowIx },
-            { x: colIx + 1, y: rowIx },
-            { x: colIx, y: rowIx + 1 },
-            { x: colIx + 1, y: rowIx + 1 },
+            { wx: colIx, wy: rowIx },
+            { wx: colIx + 1, wy: rowIx },
+            { wx: colIx, wy: rowIx + 1 },
+            { wx: colIx + 1, wy: rowIx + 1 },
         ];
     }
 
-    private validOffsetIndex(colIx: number, rowIx: number) {
-        return colIx >= 0 && colIx < this.settings.numCells
-            && rowIx >= 0 && rowIx < this.settings.numCells;
+    private validOffsetIndex(ix: OffsetCellIndex) {
+        return ix.x >= 0 && ix.x < this.settings.numCells
+            && ix.y >= 0 && ix.y < this.settings.numCells;
     }
+}
+
+type OffsetCellIndex = {
+    x: number,
+    y: number
+}
+
+type WorldCellIndex = {
+    wx: number,
+    wy: number
 }
