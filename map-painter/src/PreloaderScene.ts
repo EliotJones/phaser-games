@@ -26,6 +26,18 @@ export class PreloaderScene extends Scene {
         [0, 1, 0, 0],
     ];
 
+    readonly brickCorners: Corners[] = [
+        [1, 1, 1, 1],
+        [0, 1, 0, 0],
+        [0, 1, 1, 1],
+        [1, 0, 1, 0],
+        [1, 1, 0, 0],
+        [1, 0, 0, 1],
+        [0, 0, 0, 1],
+        [0, 0, 1, 1],
+        [1, 1, 1, 1],
+    ];
+
     constructor() {
         super({ key: 'preloader' });
     }
@@ -42,6 +54,10 @@ export class PreloaderScene extends Scene {
             frameWidth: 32,
             frameHeight: 32,
         });
+        this.load.spritesheet('brick-tiles', 'tiles/bricky.png', {
+            frameHeight: 32,
+            frameWidth: 32,
+        })
     }
 
     private createTilesetCanvas(tiles: RotatedTile[], prefix: string) {
@@ -104,10 +120,12 @@ export class PreloaderScene extends Scene {
         */
         const grassTiles = this.createRotatedTileset('tiles', this.grassCorners, 'grass');
         const sandTiles = this.createRotatedTileset('sand-tiles', this.sandCorners, 'sand');
+        const brickTiles = this.createRotatedTileset('brick-tiles', this.brickCorners, 'brick');
 
         this.scene.start('main', {
             grassTiles: grassTiles,
             sandTiles: sandTiles,
+            brickTiles: brickTiles
         })
     }
 

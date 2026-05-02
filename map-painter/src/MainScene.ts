@@ -21,14 +21,16 @@ export class MainScene extends Scene {
 
     oKey: Key;
     sKey: Key;
+    bKey: Key;
     wKey: Key;
 
-    private readonly priority: Types[] = ['mud', 'sand', 'grass'];
+    private readonly priority: Types[] = ['mud', 'sand', 'brick', 'grass'];
 
     private readonly layerKeys = {
         mud: 'mud',
         grass: 'grass',
         sand: 'sand',
+        brick: 'brick',
     };
 
     private readonly settings = {
@@ -81,20 +83,32 @@ export class MainScene extends Scene {
         const mudSet = this.tileMap.addTilesetImage('tiles', 'tiles');
         const grassTileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
         const sandTileSet = this.tileMap.addTilesetImage('autotile-sand', 'autotile-sand', 32, 32, 0, 0);
+        const brickTileSet = this.tileMap.addTilesetImage('autotile-brick', 'autotile-brick', 32, 32, 0, 0);
         const grassTiles = data.grassTiles as RotatedTile[];
         const sandTiles = data.sandTiles as RotatedTile[];
+        const brickTiles = data.brickTiles as RotatedTile[];
+
         this.typeCornersToTextureIndexLookup = new Map();
         const grass = this.createLookupForRotatedTiles(grassTiles);
         const sand = this.createLookupForRotatedTiles(sandTiles);
+        const brick = this.createLookupForRotatedTiles(brickTiles);
+
         this.typeCornersToTextureIndexLookup.set('grass', grass);
         this.typeCornersToTextureIndexLookup.set('sand', sand);
+        this.typeCornersToTextureIndexLookup.set('brick', brick);
 
         const mudLayer = this.tileMap.createBlankLayer(this.layerKeys.mud, mudSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+
         const sandLayer = this.tileMap.createBlankLayer(this.layerKeys.sand, sandTileSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+
+        const brickLayer = this.tileMap.createBlankLayer(this.layerKeys.brick, brickTileSet!)
+            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+
         this.tileMap.createBlankLayer(this.layerKeys.grass, grassTileSet!)
             ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+
         for (let y = 0; y < this.settings.numCells; y++) {
             for (let x = 0; x < this.settings.numCells; x++) {
                 mudLayer?.putTileAt(8, x, y);
@@ -172,8 +186,20 @@ export class MainScene extends Scene {
         return { x: xOffset, y: yOffset };
     }
 
+    private activeLayerRequestKey(): Types {
+        if (this.sKey.isDown) {
+            return 'sand';
+        }
+
+        if (this.bKey.isDown) {
+            return 'brick';
+        }
+
+        return 'grass';
+    }
+
     private pointerDown(pointer: Phaser.Input.Pointer) {
-        const reqType = this.sKey.isDown ? 'sand' : 'grass';
+        const reqType = this.activeLayerRequestKey();
         this.requestLayerAt(pointer.x, pointer.y, reqType);
     }
 
@@ -225,7 +251,7 @@ export class MainScene extends Scene {
         layerType: Types,
         layerPriorityIndex: number) {
         const offsetCellCorners: Corners = [0, 0, 0, 0];
-        const layerKey = layerType == 'grass' ? this.layerKeys.grass : this.layerKeys.sand;
+        const layerKey = this.layerKeys[layerType];
 
         const tileLookup = this.typeCornersToTextureIndexLookup.get(layerType);
         if (!tileLookup) {
@@ -294,7 +320,7 @@ export class MainScene extends Scene {
         }
 
         if (pointer.isDown) {
-            const reqType = this.sKey.isDown ? 'sand' : 'grass';
+            const reqType = this.activeLayerRequestKey();
             this.requestLayerAt(pointer.x, pointer.y, reqType);
         }
     }
@@ -322,6 +348,7 @@ export class MainScene extends Scene {
     }
 
     private prepKeys() {
+        this.bKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.B);
         this.oKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.O);
         this.sKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
