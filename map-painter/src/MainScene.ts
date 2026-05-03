@@ -23,6 +23,8 @@ export class MainScene extends Scene {
     sKey: Key;
     bKey: Key;
     wKey: Key;
+    cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+    private lastPointerPos?: { x: number; y: number };
 
     private readonly priority: Types[] = ['mud', 'sand', 'brick', 'grass'];
 
@@ -35,9 +37,9 @@ export class MainScene extends Scene {
 
     private readonly settings = {
         cellSize: 32,
-        numCells: 20,
-        gridDim: 32 * 20,
-        padding: 64,
+        numCells: 50,
+        gridDim: 32 * 50,
+        padding: 0,
         halfCellSize: 32 / 2,
         worldGridColor: 0xff00f3,
         worldGridOpacity: 0.5,
@@ -74,8 +76,8 @@ export class MainScene extends Scene {
         const halfCellSize = this.settings.halfCellSize;
 
         this.tileMap = this.make.tilemap({
-            width: this.settings.numCells,
-            height: this.settings.numCells,
+            width: this.settings.numCells + 1,
+            height: this.settings.numCells + 1,
             tileHeight: this.settings.cellSize,
             tileWidth: this.settings.cellSize,
         });
@@ -100,19 +102,19 @@ export class MainScene extends Scene {
         this.typeCornersToTextureIndexLookup.set('brick', brick);
 
         const mudLayer = this.tileMap.createBlankLayer(this.layerKeys.mud, mudSet!)
-            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+            ?.setPosition(this.settings.padding - halfCellSize, this.settings.padding - halfCellSize);
 
         const sandLayer = this.tileMap.createBlankLayer(this.layerKeys.sand, sandTileSet!)
-            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+            ?.setPosition(this.settings.padding - halfCellSize, this.settings.padding - halfCellSize);
 
         const brickLayer = this.tileMap.createBlankLayer(this.layerKeys.brick, brickTileSet!)
-            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+            ?.setPosition(this.settings.padding - halfCellSize, this.settings.padding - halfCellSize);
 
         this.tileMap.createBlankLayer(this.layerKeys.grass, grassTileSet!)
-            ?.setPosition(this.settings.padding + halfCellSize, this.settings.padding + halfCellSize);
+            ?.setPosition(this.settings.padding - halfCellSize, this.settings.padding - halfCellSize);
 
-        for (let y = 0; y < this.settings.numCells; y++) {
-            for (let x = 0; x < this.settings.numCells; x++) {
+        for (let y = 0; y <= this.settings.numCells; y++) {
+            for (let x = 0; x <= this.settings.numCells; x++) {
                 mudLayer?.putTileAt(8, x, y);
             }
         }
@@ -129,8 +131,8 @@ export class MainScene extends Scene {
             .setOrigin(0, 0)
             .setVisible(false);
 
-        this.offsetGrid = this.add.grid(padding + halfCellSize, padding + halfCellSize,
-            gridDim, gridDim,
+        this.offsetGrid = this.add.grid(padding - halfCellSize, padding - halfCellSize,
+            gridDim + cellSize, gridDim + cellSize,
             cellSize, cellSize,
             undefined, undefined,
             this.settings.offsetGridColor,
@@ -176,12 +178,15 @@ export class MainScene extends Scene {
         this.input.on('pointermove', this.pointerMove.bind(this));
         this.input.on('pointerdown', this.pointerDown.bind(this));
         this.input.on('wheel', this.onZoom.bind(this));
+
+        this.cameras.main.setZoom(1.5, 1.5);
+        this.cameras.main.setBounds(0, 0, this.settings.gridDim, this.settings.gridDim);
     }
 
     private cellTopLeft(x: number, y: number, isWorld: boolean) {
         const topLeft = isWorld
             ? [this.settings.padding, this.settings.padding]
-            : [this.settings.padding + this.settings.halfCellSize, this.settings.padding + this.settings.halfCellSize];
+            : [this.settings.padding - this.settings.halfCellSize, this.settings.padding - this.settings.halfCellSize];
 
         const xOffset = (x * this.settings.cellSize) + topLeft[0];
         const yOffset = (y * this.settings.cellSize) + topLeft[1];
@@ -204,8 +209,10 @@ export class MainScene extends Scene {
     private pointerDown(pointer: Phaser.Input.Pointer) {
         const reqType = this.activeLayerRequestKey();
         if (pointer.middleButtonDown()) {
+            this.lastPointerPos = { x: pointer.x, y: pointer.y };
             return;
         }
+
         this.requestLayerAt(pointer.worldX, pointer.worldY, reqType);
     }
 
@@ -270,6 +277,7 @@ export class MainScene extends Scene {
             const worldCellIx = worldCellNeighbors[wI];
             if (worldCellIx.wx < 0 || worldCellIx.wy < 0) {
                 offsetCellCorners[wI] = 1;
+                continue;
             }
 
             // Remove other layer tiles above the currently drawn tile.
@@ -316,6 +324,8 @@ export class MainScene extends Scene {
     }
 
     private pointerMove(pointer: Phaser.Input.Pointer) {
+        const cam = this.cameras.main;
+
         const worldCell = this.getWorldCellIndexAt(pointer.worldX, pointer.worldY);
         if (!worldCell) {
             this.highlightSquare.setVisible(false);
@@ -323,6 +333,17 @@ export class MainScene extends Scene {
             const highlightPos = this.cellTopLeft(worldCell.wx, worldCell.wy, true);
             this.highlightSquare.setPosition(highlightPos.x, highlightPos.y);
             this.highlightSquare.setVisible(true);
+        }
+
+        if (pointer.middleButtonDown() && this.lastPointerPos) {
+            const dx = pointer.x - this.lastPointerPos.x;
+            const dy = pointer.y - this.lastPointerPos.y;
+
+            // Move camera opposite to drag direction
+            cam.scrollX -= dx / cam.zoom;
+            cam.scrollY -= dy / cam.zoom;
+
+            this.lastPointerPos = { x: pointer.x, y: pointer.y };
         }
 
         if (pointer.isDown && !pointer.middleButtonDown()) {
@@ -342,6 +363,22 @@ export class MainScene extends Scene {
             const newVal = !this.offsetGrid.visible;
             this.offsetGrid.setVisible(newVal);
             this.ogTextGroup.setVisible(newVal);
+        }
+
+        const cam = this.cameras.main;
+        const speed = 10 / cam.zoom;
+
+        if (this.cursors.left.isDown) {
+            cam.scrollX -= speed;
+        }
+        if (this.cursors.right.isDown) {
+            cam.scrollX += speed;
+        }
+        if (this.cursors.up.isDown) {
+            cam.scrollY -= speed;
+        }
+        if (this.cursors.down.isDown) {
+            cam.scrollY += speed;
         }
     }
 
@@ -374,6 +411,8 @@ export class MainScene extends Scene {
         this.oKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.O);
         this.sKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        this.cursors = this.input.keyboard!.createCursorKeys();
+
     }
 
     private getWorldCellIndexAt(x: number, y: number): WorldCellIndex | null {
@@ -398,25 +437,25 @@ export class MainScene extends Scene {
 
     private getOffsetIndices(colIx: number, rowIx: number): OffsetCellIndex[] {
         return [
-            { x: colIx - 1, y: rowIx - 1 },
-            { x: colIx, y: rowIx - 1 },
-            { x: colIx - 1, y: rowIx },
             { x: colIx, y: rowIx },
+            { x: colIx + 1, y: rowIx },
+            { x: colIx, y: rowIx + 1 },
+            { x: colIx + 1, y: rowIx + 1 },
         ]
     }
 
     private getWorldIndices(colIx: number, rowIx: number): WorldCellIndex[] {
         return [
+            { wx: colIx - 1, wy: rowIx - 1 },
+            { wx: colIx, wy: rowIx - 1 },
+            { wx: colIx - 1, wy: rowIx },
             { wx: colIx, wy: rowIx },
-            { wx: colIx + 1, wy: rowIx },
-            { wx: colIx, wy: rowIx + 1 },
-            { wx: colIx + 1, wy: rowIx + 1 },
         ];
     }
 
     private validOffsetIndex(ix: OffsetCellIndex) {
-        return ix.x >= 0 && ix.x < this.settings.numCells
-            && ix.y >= 0 && ix.y < this.settings.numCells;
+        return ix.x >= 0 && ix.x <= this.settings.numCells
+            && ix.y >= 0 && ix.y <= this.settings.numCells;
     }
 }
 
