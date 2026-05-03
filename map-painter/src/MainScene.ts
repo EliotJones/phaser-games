@@ -80,6 +80,8 @@ export class MainScene extends Scene {
             tileWidth: this.settings.cellSize,
         });
 
+        this.cameras.main.roundPixels = true;
+
         const mudSet = this.tileMap.addTilesetImage('tiles', 'tiles');
         const grassTileSet = this.tileMap.addTilesetImage('autotile-grass', 'autotile-grass', 32, 32, 0, 0);
         const sandTileSet = this.tileMap.addTilesetImage('autotile-sand', 'autotile-sand', 32, 32, 0, 0);
@@ -173,6 +175,7 @@ export class MainScene extends Scene {
 
         this.input.on('pointermove', this.pointerMove.bind(this));
         this.input.on('pointerdown', this.pointerDown.bind(this));
+        this.input.on('wheel', this.onZoom.bind(this));
     }
 
     private cellTopLeft(x: number, y: number, isWorld: boolean) {
@@ -200,7 +203,10 @@ export class MainScene extends Scene {
 
     private pointerDown(pointer: Phaser.Input.Pointer) {
         const reqType = this.activeLayerRequestKey();
-        this.requestLayerAt(pointer.x, pointer.y, reqType);
+        if (pointer.middleButtonDown()) {
+            return;
+        }
+        this.requestLayerAt(pointer.worldX, pointer.worldY, reqType);
     }
 
     private requestLayerAt(x: number, y: number, type: Types) {
@@ -310,7 +316,7 @@ export class MainScene extends Scene {
     }
 
     private pointerMove(pointer: Phaser.Input.Pointer) {
-        const worldCell = this.getWorldCellIndexAt(pointer.x, pointer.y);
+        const worldCell = this.getWorldCellIndexAt(pointer.worldX, pointer.worldY);
         if (!worldCell) {
             this.highlightSquare.setVisible(false);
         } else {
@@ -319,9 +325,9 @@ export class MainScene extends Scene {
             this.highlightSquare.setVisible(true);
         }
 
-        if (pointer.isDown) {
+        if (pointer.isDown && !pointer.middleButtonDown()) {
             const reqType = this.activeLayerRequestKey();
-            this.requestLayerAt(pointer.x, pointer.y, reqType);
+            this.requestLayerAt(pointer.worldX, pointer.worldY, reqType);
         }
     }
 
@@ -345,6 +351,22 @@ export class MainScene extends Scene {
 
     private toggleOffsetGrid() {
         return Phaser.Input.Keyboard.JustDown(this.oKey);
+    }
+
+    private onZoom(pointer: Phaser.Input.Pointer, gameObjects: any, deltaX: number, deltaY: number) {
+        const cam = this.cameras.main;
+
+        const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+
+        const zoomSpeed = 0.001; // tweak this
+        const newZoom = Phaser.Math.Clamp(cam.zoom - deltaY * zoomSpeed, 0.5, 2);
+
+        cam.setZoom(newZoom).preRender();
+
+        const newWorldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+
+        cam.scrollX += worldPoint.x - newWorldPoint.x;
+        cam.scrollY += worldPoint.y - newWorldPoint.y;
     }
 
     private prepKeys() {

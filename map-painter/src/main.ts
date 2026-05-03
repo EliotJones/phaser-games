@@ -8,4 +8,7 @@ const game = new Phaser.Game({
     height: 768,
     parent: 'phaser',
     scene: [PreloaderScene, MainScene],
+    render: {
+        pixelArt: true,
+    }
 })
